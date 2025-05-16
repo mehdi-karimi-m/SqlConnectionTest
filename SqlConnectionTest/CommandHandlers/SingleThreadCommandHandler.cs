@@ -20,29 +20,32 @@ internal class SingleThreadCommandHandler(string connectionString, CancellationT
 
         var stopwatch = new Stopwatch();
 
-        for (var i = 0; i < tasks.Length; i++)
+        for (var i = 1; i < tasks.Length + 1; i++)
         {
             var threadId = i;
-            tasks[i] = new Task(async () =>
+
+            tasks[i] = new Task(Action);
+            tasks[i].Start();
+            continue;
+
+            async void Action()
             {
-                var dbConnection = db;
                 while (!cancellationToken.IsCancellationRequested)
                 {
                     stopwatch.Restart();
                     try
                     {
-                        await dbConnection.QueryAsync("select 1", cancellationToken);
+                        await db.QueryAsync("select 1", cancellationToken);
+                        Console.WriteLine($"Thread Id: {threadId:0000} - select 1 elapsed time: {stopwatch.Elapsed}");
                     }
                     catch (Exception e)
                     {
-                        Console.WriteLine($"Thread Id: {threadId} - Sql Connection Exception: {e.Message}");
+                        Console.ForegroundColor = ConsoleColor.Red;
+                        Console.WriteLine($"Thread Id: {threadId:0000} - Sql Connection Exception: {e.Message}");
+                        Console.ResetColor();
                     }
-                    Console.WriteLine($"Thread Id: {{threadId}} - select 1 elapsed time: {stopwatch.Elapsed}");
                 }
-            });
-            tasks[i].Start();
+            }
         }
-
-        Task.WaitAll(tasks, cancellationToken);
     }
 }

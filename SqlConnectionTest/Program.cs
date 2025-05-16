@@ -21,6 +21,9 @@ MakeSureConnectionStringIsValid(connectionString);
 
 var cancellationTokenSource = new CancellationTokenSource();
 
+var telnetTask = new Task(TcpConnectionTest);
+telnetTask.Start();
+
 var result = Parser.Default.ParseArguments<SingleThreadCommand, PerThreadCommand, PerSqlQueryCommand>(args);
 var singleThreadCommandHandler = new SingleThreadCommandHandler(connectionString, cancellationTokenSource.Token);
 var perThreadCommandHandler = new PerThreadCommandHandler(connectionString, cancellationTokenSource.Token);
@@ -37,9 +40,33 @@ result.WithParsed<SingleThreadCommand>(command => _ = singleThreadCommandHandler
             Console.WriteLine(error.ToString());
         }
     });
+
 Console.WriteLine("Press any key to exit...");
 Console.ReadLine();
 return;
+
+async void TcpConnectionTest()
+{
+    var hostname = telnetConfiguration.Hostname;
+    var port = telnetConfiguration.Port;
+    while (true)
+    {
+        try
+        {
+            using var client = new TcpClient();
+            await client.ConnectAsync(hostname, port);
+            await Task.Delay(1000, cancellationTokenSource.Token);
+            Console.WriteLine($"TCP client connected to {hostname}:{port}");
+        }
+        catch (Exception e)
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine("*******************************************");
+            Console.WriteLine($"TCP client could not be connected to {hostname}:{port}, error: {e.Message}");
+            Console.ResetColor();
+        }
+    }
+}
 
 void MakeSureConnectionStringIsValid(string? sqlConnectionString)
 {
